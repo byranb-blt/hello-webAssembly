@@ -1,0 +1,22 @@
+{
+  "name": "assemblyscript-wasm-example",
+  "version": "1.0.0",
+  "description": "AssemblyScript to WebAssembly example",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx asc assembly/index.ts --target release --outFile build/release.wasm --textFile build/release.wat --optimize --sourceMap",
+    "build:debug": "npx asc assembly/index.ts --target debug --outFile build/debug.wasm --textFile build/debug.wat --sourceMap",
+    "test": "node tests"
+  },
+  "keywords": [
+    "webassembly",
+    "assemblyscript",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "assemblyscript": "^0.27.0"
+  }
+}
+

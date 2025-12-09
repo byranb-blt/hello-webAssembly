@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性能对比示例 - WebAssembly</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #222;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a1a1a;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        h2 {
+            color: #2a2a2a;
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 0;
+        }
+        p {
+            color: #333;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .demo-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .demo-section p {
+            color: #444;
+            font-size: 15px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #007acc;
+            font-family: 'Courier New', monospace;
+            color: #1a1a1a;
+            font-size: 15px;
+        }
+        .performance-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .performance-box {
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .performance-box h3 {
+            color: #1a1a1a;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+        }
+        .js-performance {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #333;
+        }
+        .wasm-performance {
+            background: #d1ecf1;
+            border: 2px solid #007acc;
+            color: #1a1a1a;
+        }
+        .time {
+            font-size: 26px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #1a1a1a;
+        }
+        .performance-box div {
+            color: #444;
+            font-size: 14px;
+        }
+        .speedup {
+            font-size: 20px;
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            width: 100px;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 10px 0;
+            color: #856404;
+            font-size: 15px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ 性能对比示例</h1>
+        <p>对比 JavaScript 和 WebAssembly 在计算密集型任务中的性能差异</p>
+        
+        <div class="demo-section">
+            <h2>测试 1: 斐波那契数列（递归）</h2>
+            <div class="warning">
+                ⚠️ 注意：递归版本计算较大数字会很慢，建议测试 n ≤ 40
+            </div>
+            <p>计算第 <input type="number" id="fibN" value="35" min="1" max="45"> 个斐波那契数</p>
+            <button onclick="compareFibonacci()">开始性能对比</button>
+            <div id="fibResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>测试 2: 斐波那契数列（迭代）</h2>
+            <div class="warning">
+                ⚠️ 注意：WebAssembly 使用 i32（最大值约21亿），当 n > 46 时结果会溢出。建议测试 n ≤ 46。
+            </div>
+            <p>计算第 <input type="number" id="fibIterN" value="40" min="1" max="50"> 个斐波那契数（迭代版本）</p>
+            <button onclick="compareFibonacciIterative()">开始性能对比</button>
+            <div id="fibIterResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>测试 3: 阶乘计算</h2>
+            <div class="warning">
+                ⚠️ 注意：WebAssembly 使用 i32，只能安全计算到 12!。JavaScript 可以到 170!。建议测试 n ≤ 12 进行公平对比。
+            </div>
+            <p>计算 <input type="number" id="factN" value="12" min="1" max="20"> 的阶乘</p>
+            <button onclick="compareFactorial()">开始性能对比</button>
+            <div id="factResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>测试 4: 数组求和</h2>
+            <div class="warning">
+                ⚠️ 注意：WebAssembly 使用 i32（最大值约21亿）。数组元素值较大或数量很多时可能溢出。建议数组元素值 ≤ 1000。
+            </div>
+            <p>对包含 <input type="number" id="arraySize" value="100000" min="1000" step="10000"> 个元素的数组求和（元素值为 1 到 n）</p>
+            <button onclick="compareArraySum()">开始性能对比</button>
+            <div id="arrayResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let wasmInstance = null;
+        let wasmMemory = null;
+
+        // JavaScript 实现：斐波那契（递归）
+        function jsFibRecursive(n) {
+            if (n <= 1) return n;
+            return jsFibRecursive(n - 1) + jsFibRecursive(n - 2);
+        }
+
+        // JavaScript 实现：斐波那契（迭代）
+        function jsFibIterative(n) {
+            if (n <= 1) return n;
+            let a = 0, b = 1;
+            for (let i = 2; i <= n; i++) {
+                let temp = a + b;
+                a = b;
+                b = temp;
+            }
+            return b;
+        }
+
+        // JavaScript 实现：阶乘（带溢出检测）
+        function jsFactorial(n) {
+            // JavaScript Number 类型的安全整数范围
+            // 超过这个范围会失去精度或变成 Infinity
+            if (n > 170) {
+                return Infinity; // 170! 已经超出安全范围
+            }
+            let result = 1;
+            for (let i = 1; i <= n; i++) {
+                result *= i;
+                // 检测溢出
+                if (!isFinite(result)) {
+                    return Infinity;
+                }
+            }
+            return result;
+        }
+
+        // JavaScript 实现：数组求和
+        function jsSumArray(arr) {
+            let sum = 0;
+            for (let i = 0; i < arr.length; i++) {
+                sum += arr[i];
+            }
+            return sum;
+        }
+
+        // 性能测试辅助函数
+        function measureTime(fn) {
+            const start = performance.now();
+            const result = fn();
+            const end = performance.now();
+            return {
+                result: result,
+                time: end - start
+            };
+        }
+
+        // 初始化 WebAssembly
+        async function initWasm() {
+            if (wasmInstance) return wasmInstance;
+            
+            try {
+                // 创建内存（用于 sum_array 函数）
+                if (!wasmMemory) {
+                    wasmMemory = new WebAssembly.Memory({ initial: 1 });
+                }
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('fibonacci.wasm'),
+                    { js: { mem: wasmMemory } }
+                );
+                wasmInstance = wasmModule.instance;
+                return wasmInstance;
+            } catch (error) {
+                console.error('加载 WebAssembly 失败:', error);
+                alert('加载 WebAssembly 失败，请确保通过 HTTP 服务器运行此页面');
+                return null;
+            }
+        }
+
+        // 对比斐波那契（递归）
+        async function compareFibonacci() {
+            const n = parseInt(document.getElementById('fibN').value);
+            if (n > 45) {
+                alert('递归版本计算 n > 45 会非常慢，建议使用较小的值');
+                return;
+            }
+            
+            await initWasm();
+            if (!wasmInstance) return;
+            
+            const resultDiv = document.getElementById('fibResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>计算中...</p>';
+            
+            // JavaScript 版本
+            const jsResult = measureTime(() => jsFibRecursive(n));
+            
+            // WebAssembly 版本
+            const wasmResult = measureTime(() => wasmInstance.exports.fib_recursive(n));
+            
+            const speedup = (jsResult.time / wasmResult.time).toFixed(2);
+            
+            resultDiv.innerHTML = `
+                <div class="performance-comparison">
+                    <div class="performance-box js-performance">
+                        <h3>JavaScript</h3>
+                        <div class="time">${jsResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${jsResult.result}</div>
+                    </div>
+                    <div class="performance-box wasm-performance">
+                        <h3>WebAssembly</h3>
+                        <div class="time">${wasmResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${wasmResult.result}</div>
+                    </div>
+                </div>
+                <div class="speedup">🚀 WebAssembly 快 ${speedup}x</div>
+            `;
+        }
+
+        // 对比斐波那契（迭代）
+        async function compareFibonacciIterative() {
+            const n = parseInt(document.getElementById('fibIterN').value);
+            
+            // i32 最大值约 2,147,483,647
+            // 第 46 个斐波那契数约为 1,836,311,903，仍在范围内
+            // 第 47 个约为 2,971,215,073，超出范围
+            if (n > 46) {
+                alert('WebAssembly 使用 i32 类型，当 n > 46 时结果会溢出。建议使用 n ≤ 46 进行测试。');
+                return;
+            }
+            
+            await initWasm();
+            if (!wasmInstance) return;
+            
+            const resultDiv = document.getElementById('fibIterResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>计算中...</p>';
+            
+            // JavaScript 版本
+            const jsResult = measureTime(() => jsFibIterative(n));
+            
+            // WebAssembly 版本
+            const wasmResult = measureTime(() => wasmInstance.exports.fib_iterative(n));
+            
+            // 检查溢出（i32 溢出后会变成负数或很小的正数）
+            const jsValue = jsResult.result;
+            const wasmValue = wasmResult.result;
+            const expectedValue = jsValue; // JavaScript 的结果作为参考
+            
+            let jsResultDisplay = jsValue;
+            let wasmResultDisplay = wasmValue;
+            let speedup = 'N/A';
+            let overflowWarning = '';
+            
+            // 检查 WebAssembly 是否溢出（结果与 JavaScript 不一致且不合理）
+            if (wasmValue !== expectedValue && (wasmValue < 0 || wasmValue < expectedValue / 2)) {
+                wasmResultDisplay = `${wasmValue} (溢出)`;
+                overflowWarning = '<div style="color: #dc3545; font-size: 12px; margin-top: 5px;">⚠️ WebAssembly 结果溢出</div>';
+            } else {
+                speedup = (jsResult.time / wasmResult.time).toFixed(2);
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="performance-comparison">
+                    <div class="performance-box js-performance">
+                        <h3>JavaScript</h3>
+                        <div class="time">${jsResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${jsResultDisplay}</div>
+                    </div>
+                    <div class="performance-box wasm-performance">
+                        <h3>WebAssembly</h3>
+                        <div class="time">${wasmResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${wasmResultDisplay}</div>
+                        ${overflowWarning}
+                    </div>
+                </div>
+                ${speedup !== 'N/A' ? `<div class="speedup">🚀 WebAssembly 快 ${speedup}x</div>` : '<div style="color: #856404; margin-top: 10px;">⚠️ 无法比较性能（存在溢出）</div>'}
+            `;
+        }
+
+        // 对比阶乘
+        async function compareFactorial() {
+            const n = parseInt(document.getElementById('factN').value);
+            
+            // i32 最大值：2,147,483,647
+            // 12! = 479,001,600 (安全)
+            // 13! = 6,227,020,800 (溢出)
+            if (n > 12) {
+                alert('WebAssembly 使用 i32 类型，只能安全计算到 12!。13! 会溢出。建议使用 n ≤ 12 进行测试。');
+                return;
+            }
+            
+            await initWasm();
+            if (!wasmInstance) return;
+            
+            const resultDiv = document.getElementById('factResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>计算中...</p>';
+            
+            // JavaScript 版本
+            const jsResult = measureTime(() => jsFactorial(n));
+            
+            // WebAssembly 版本
+            const wasmResult = measureTime(() => wasmInstance.exports.factorial(n));
+            
+            // 处理溢出情况
+            const jsValue = jsResult.result;
+            const wasmValue = wasmResult.result;
+            let jsResultDisplay = jsValue;
+            let wasmResultDisplay = wasmValue;
+            let speedup = 'N/A';
+            let overflowWarning = '';
+            
+            // 检查 JavaScript 溢出
+            if (!isFinite(jsValue)) {
+                jsResultDisplay = 'Infinity (溢出)';
+            }
+            
+            // 检查 WebAssembly 溢出（i32 溢出后会回绕，结果会与 JavaScript 不一致）
+            // 12! = 479,001,600，如果 WebAssembly 结果不同，可能溢出
+            const expectedValues = {
+                1: 1, 2: 2, 3: 6, 4: 24, 5: 120, 6: 720, 7: 5040, 8: 40320,
+                9: 362880, 10: 3628800, 11: 39916800, 12: 479001600
+            };
+            
+            if (expectedValues[n] && wasmValue !== expectedValues[n]) {
+                wasmResultDisplay = `${wasmValue} (溢出)`;
+                overflowWarning = '<div style="color: #dc3545; font-size: 12px; margin-top: 5px;">⚠️ WebAssembly 结果溢出</div>';
+            } else if (isFinite(jsValue) && wasmValue === jsValue) {
+                speedup = (jsResult.time / wasmResult.time).toFixed(2);
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="performance-comparison">
+                    <div class="performance-box js-performance">
+                        <h3>JavaScript</h3>
+                        <div class="time">${jsResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${jsResultDisplay}</div>
+                        ${!isFinite(jsValue) ? '<div style="color: #dc3545; font-size: 12px; margin-top: 5px;">⚠️ 数值溢出</div>' : ''}
+                    </div>
+                    <div class="performance-box wasm-performance">
+                        <h3>WebAssembly</h3>
+                        <div class="time">${wasmResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${wasmResultDisplay}</div>
+                        ${overflowWarning}
+                    </div>
+                </div>
+                ${speedup !== 'N/A' ? `<div class="speedup">🚀 WebAssembly 快 ${speedup}x</div>` : '<div style="color: #856404; margin-top: 10px;">⚠️ 无法比较性能（存在溢出）</div>'}
+            `;
+        }
+
+        // 对比数组求和
+        async function compareArraySum() {
+            const size = parseInt(document.getElementById('arraySize').value);
+            
+            // i32 最大值：2,147,483,647
+            // 数组元素值为 1 到 size，求和 = size * (size + 1) / 2
+            // 当 size * (size + 1) / 2 > 2,147,483,647 时会溢出
+            // 大约 size > 65535 时会溢出
+            const maxSafeSize = 65535;
+            if (size > maxSafeSize) {
+                alert(`数组求和结果可能超出 i32 范围（最大值约21亿）。建议使用 size ≤ ${maxSafeSize} 进行测试。`);
+                return;
+            }
+            
+            await initWasm();
+            if (!wasmInstance || !wasmMemory) return;
+            
+            const resultDiv = document.getElementById('arrayResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>准备数据并计算中...</p>';
+            
+            // 准备数组数据（元素值为 1 到 size）
+            const array = new Array(size).fill(0).map((_, i) => i + 1);
+            
+            // 计算期望结果（用于验证）
+            const expectedSum = size * (size + 1) / 2;
+            
+            // 将数组写入 WebAssembly 内存
+            const ptr = 0;
+            const view = new Int32Array(wasmMemory.buffer);
+            for (let i = 0; i < size; i++) {
+                view[i] = array[i];
+            }
+            
+            // JavaScript 版本
+            const jsResult = measureTime(() => jsSumArray(array));
+            
+            // WebAssembly 版本
+            const wasmResult = measureTime(() => 
+                wasmInstance.exports.sum_array(ptr, size)
+            );
+            
+            // 检查溢出
+            const jsValue = jsResult.result;
+            const wasmValue = wasmResult.result;
+            let jsResultDisplay = jsValue;
+            let wasmResultDisplay = wasmValue;
+            let speedup = 'N/A';
+            let overflowWarning = '';
+            
+            // 检查 WebAssembly 是否溢出
+            if (wasmValue !== expectedSum && (wasmValue < 0 || wasmValue < expectedSum / 2)) {
+                wasmResultDisplay = `${wasmValue} (溢出，期望: ${expectedSum})`;
+                overflowWarning = '<div style="color: #dc3545; font-size: 12px; margin-top: 5px;">⚠️ WebAssembly 结果溢出</div>';
+            } else if (jsValue === expectedSum && wasmValue === expectedSum) {
+                speedup = (jsResult.time / wasmResult.time).toFixed(2);
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="performance-comparison">
+                    <div class="performance-box js-performance">
+                        <h3>JavaScript</h3>
+                        <div class="time">${jsResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${jsResultDisplay}</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">期望: ${expectedSum}</div>
+                    </div>
+                    <div class="performance-box wasm-performance">
+                        <h3>WebAssembly</h3>
+                        <div class="time">${wasmResult.time.toFixed(2)} ms</div>
+                        <div>结果: ${wasmResultDisplay}</div>
+                        ${overflowWarning}
+                    </div>
+                </div>
+                ${speedup !== 'N/A' ? `<div class="speedup">🚀 WebAssembly 快 ${speedup}x</div>` : '<div style="color: #856404; margin-top: 10px;">⚠️ 无法比较性能（存在溢出）</div>'}
+            `;
+        }
+    </script>
+</body>
+</html>
+

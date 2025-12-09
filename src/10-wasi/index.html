@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASI 演示 - WebAssembly System Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            font-size: 24px;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+            font-weight: 600;
+        }
+        
+        .info-box {
+            background: #f5f7fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            line-height: 1.6;
+            color: #555;
+        }
+        
+        .info-box code {
+            background: #e8ecf1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #d63384;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .console .stdout {
+            color: #d4d4d4;
+        }
+        
+        .console .stderr {
+            color: #f48771;
+        }
+        
+        .console .info {
+            color: #569cd6;
+        }
+        
+        .console .error {
+            color: #f48771;
+        }
+        
+        .console .success {
+            color: #4ec9b0;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .code-block code {
+            color: #d4d4d4;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box p {
+            margin: 5px 0;
+            color: #856404;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 WASI 演示</h1>
+            <p class="subtitle">WebAssembly System Interface - 系统接口演示</p>
+        </header>
+        
+        <div class="content">
+            <div class="section">
+                <h2>📖 什么是 WASI？</h2>
+                <div class="info-box">
+                    <p><strong>WASI (WebAssembly System Interface)</strong> 是一个系统接口标准，允许 WebAssembly 程序与操作系统交互。</p>
+                    <p>• <strong>统一接口</strong>：提供跨平台的系统调用接口</p>
+                    <p>• <strong>可移植性</strong>：一次编译，多平台运行</p>
+                    <p>• <strong>安全性</strong>：在沙盒环境中安全执行</p>
+                    <p>• <strong>应用场景</strong>：服务器、边缘计算、命令行工具</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🚀 运行方式</h2>
+                <div class="info-box">
+                    <p><strong>1. 浏览器环境</strong>：使用 WASI polyfill 模拟系统调用</p>
+                    <p><strong>2. 原生环境</strong>：使用 wasmer 或 wasmtime 直接运行</p>
+                </div>
+                
+                <div class="warning-box">
+                    <p><strong>⚠️ 注意</strong>：在浏览器中，WASI 功能需要通过 polyfill 实现。本示例使用简化的 polyfill 来演示 WASI 的基本功能。</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>💻 控制台输出</h2>
+                <div id="status" class="status loading">正在加载 WebAssembly 模块...</div>
+                <div id="console" class="console"></div>
+                
+                <div class="button-group">
+                    <button id="btnRun" onclick="runWasiProgram()">运行 WASI 程序</button>
+                    <button id="btnWriteMessage" onclick="writeCustomMessage()">写入自定义消息</button>
+                    <button id="btnWriteError" onclick="writeErrorMessage()">写入错误消息</button>
+                    <button id="btnClear" onclick="clearConsole()">清空控制台</button>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📝 代码说明</h2>
+                <div class="code-block">
+<code>;; WASI fd_write 函数签名
+;; (func $fd_write 
+;;   (param i32)  ; file_descriptor (1=stdout, 2=stderr)
+;;   (param i32)  ; *iovs (io vector 数组指针)
+;;   (param i32)  ; iovs_len (io vector 数量)
+;;   (param i32)  ; *nwritten (写入字节数指针)
+;;   (result i32) ; 错误码 (0=成功)
+;; )
+
+;; io vector 结构（8字节）：
+;;   offset 0-3: iov_base (数据指针)
+;;   offset 4-7: iov_len  (数据长度)</code>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🔧 原生环境运行</h2>
+                <div class="code-block">
+<code># 使用 wasmer 运行
+wasmer run wasi-demo.wasm
+
+# 使用 wasmtime 运行
+wasmtime wasi-demo.wasm
+
+# 输出：
+# Hello from WASI!
+# This is a WASI demo.
+# WebAssembly System Interface</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wasmInstance = null;
+        let memory = null;
+        const consoleOutput = document.getElementById('console');
+        const statusDiv = document.getElementById('status');
+        
+        // 简化的 WASI polyfill - fd_write 实现
+        function createWasiPolyfill() {
+            return {
+                wasi_unstable: {
+                    fd_write: (fd, iovs, iovs_len, nwritten_ptr) => {
+                        const view = new DataView(memory.buffer);
+                        let totalWritten = 0;
+                        
+                        for (let i = 0; i < iovs_len; i++) {
+                            // 读取 io vector
+                            const iov_base = view.getUint32(iovs + i * 8, true);
+                            const iov_len = view.getUint32(iovs + i * 8 + 4, true);
+                            
+                            // 读取字符串数据
+                            const bytes = new Uint8Array(memory.buffer, iov_base, iov_len);
+                            const text = new TextDecoder('utf8').decode(bytes);
+                            
+                            // 根据文件描述符输出
+                            if (fd === 1) {
+                                // stdout
+                                logToConsole(text, 'stdout');
+                            } else if (fd === 2) {
+                                // stderr
+                                logToConsole(text, 'stderr');
+                            }
+                            
+                            totalWritten += iov_len;
+                        }
+                        
+                        // 写入实际写入的字节数
+                        view.setUint32(nwritten_ptr, totalWritten, true);
+                        
+                        return 0; // 返回 0 表示成功
+                    }
+                }
+            };
+        }
+        
+        // 日志输出函数
+        function logToConsole(message, type = 'stdout') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'stderr' ? 'stderr' : 'stdout';
+            consoleOutput.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        // 初始化 WebAssembly
+        async function initWasm() {
+            try {
+                statusDiv.className = 'status loading';
+                statusDiv.textContent = '正在加载 WebAssembly 模块...';
+                
+                // 创建内存
+                memory = new WebAssembly.Memory({ initial: 1 });
+                
+                // 创建导入对象（包含 WASI polyfill）
+                const importObject = {
+                    wasi_unstable: createWasiPolyfill().wasi_unstable
+                };
+                
+                // 加载并实例化模块
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('wasi-demo.wasm'),
+                    importObject
+                );
+                
+                wasmInstance = wasmModule.instance;
+                memory = wasmInstance.exports.memory;
+                
+                // 更新导入对象中的内存引用
+                importObject.wasi_unstable = createWasiPolyfill().wasi_unstable;
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ WebAssembly 模块加载成功！';
+                logToConsole('WebAssembly 模块加载成功！', 'success');
+                
+                return wasmInstance;
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ 加载失败: ${error.message}`;
+                logToConsole(`加载失败: ${error.message}`, 'error');
+                console.error('加载 WebAssembly 失败:', error);
+                return null;
+            }
+        }
+        
+        // 运行 WASI 程序（调用 _start）
+        async function runWasiProgram() {
+            if (!wasmInstance) {
+                wasmInstance = await initWasm();
+                if (!wasmInstance) return;
+            }
+            
+            try {
+                logToConsole('--- 运行 WASI 程序 (_start) ---', 'info');
+                wasmInstance.exports._start();
+                logToConsole('--- 程序执行完成 ---', 'info');
+            } catch (error) {
+                logToConsole(`执行错误: ${error.message}`, 'error');
+                console.error('执行错误:', error);
+            }
+        }
+        
+        // 写入自定义消息
+        async function writeCustomMessage() {
+            if (!wasmInstance) {
+                wasmInstance = await initWasm();
+                if (!wasmInstance) return;
+            }
+            
+            try {
+                const message = 'Custom message from JavaScript!\n';
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(message);
+                
+                // 将消息写入内存（偏移 200）
+                const view = new Uint8Array(memory.buffer);
+                view.set(bytes, 200);
+                
+                // 调用 writeMessage 函数
+                wasmInstance.exports.writeMessage(200, bytes.length);
+            } catch (error) {
+                logToConsole(`执行错误: ${error.message}`, 'error');
+                console.error('执行错误:', error);
+            }
+        }
+        
+        // 写入错误消息
+        async function writeErrorMessage() {
+            if (!wasmInstance) {
+                wasmInstance = await initWasm();
+                if (!wasmInstance) return;
+            }
+            
+            try {
+                const message = 'This is an error message!\n';
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(message);
+                
+                // 将消息写入内存（偏移 250）
+                const view = new Uint8Array(memory.buffer);
+                view.set(bytes, 250);
+                
+                // 调用 writeError 函数（写入到 stderr）
+                wasmInstance.exports.writeError(250, bytes.length);
+            } catch (error) {
+                logToConsole(`执行错误: ${error.message}`, 'error');
+                console.error('执行错误:', error);
+            }
+        }
+        
+        // 清空控制台
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initWasm();
+        });
+    </script>
+</body>
+</html>
+

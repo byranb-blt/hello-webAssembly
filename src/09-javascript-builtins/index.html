@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Builtins 示例 - WebAssembly</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #222;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a1a1a;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        h2 {
+            color: #2a2a2a;
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 30px;
+        }
+        .demo-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #007acc;
+            font-family: 'Courier New', monospace;
+            color: #1a1a1a;
+            font-size: 15px;
+            font-weight: 500;
+            white-space: pre-wrap;
+        }
+        input {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            font-size: 15px;
+            color: #1a1a1a;
+        }
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 15px 0;
+            color: #1a1a1a;
+        }
+        .info-box strong {
+            color: #007acc;
+            font-size: 16px;
+        }
+        .info-box ul {
+            color: #333;
+            font-size: 15px;
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info-box li {
+            margin: 5px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+            font-size: 14px;
+        }
+        .console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .console-line {
+            margin: 3px 0;
+            color: #d4d4d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 JavaScript Builtins 示例</h1>
+        <p>展示如何在 WebAssembly 中使用 JavaScript 内置函数</p>
+        
+        <div class="info-box">
+            <strong>什么是 JavaScript Builtins？</strong>
+            <ul>
+                <li>允许 WebAssembly 直接调用 JavaScript 内置功能</li>
+                <li>通过 <code>import</code> 语句导入 JavaScript 函数</li>
+                <li>补充 WebAssembly 缺失的高级功能（如三角函数、字符串操作）</li>
+                <li>简化 WebAssembly 与 JavaScript 的集成</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h2>1. 三角函数</h2>
+            <p>计算 sin(<input type="number" id="sinX" value="1.57" step="0.01">) ≈ sin(π/2)</p>
+            <button onclick="demoSin()">计算 sin</button>
+            <button onclick="demoCos()">计算 cos</button>
+            <button onclick="demoTan()">计算 tan</button>
+            <div id="trigResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>2. 对数函数</h2>
+            <p>计算 ln(<input type="number" id="lnX" value="2.718" step="0.1">) 和 log10(<input type="number" id="log10X" value="100" step="1">)</p>
+            <button onclick="demoLn()">计算 ln</button>
+            <button onclick="demoLog10()">计算 log10</button>
+            <div id="logResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>3. 幂运算</h2>
+            <p>计算 <input type="number" id="base" value="2" step="0.1"> 的 <input type="number" id="exp" value="3" step="0.1"> 次方</p>
+            <button onclick="demoPower()">计算幂</button>
+            <button onclick="demoExp()">计算 e^x</button>
+            <div id="powerResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>4. 数学恒等式验证</h2>
+            <p>验证 sin²(x) + cos²(x) = 1，x = <input type="number" id="identityX" value="1.5" step="0.1"></p>
+            <button onclick="demoIdentity()">验证恒等式</button>
+            <div id="identityResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>5. 绝对值</h2>
+            <p>计算 |<input type="number" id="absX" value="-3.14" step="0.1">|</p>
+            <button onclick="demoAbs()">计算绝对值</button>
+            <div id="absResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>6. 控制台输出</h2>
+            <p>演示从 WebAssembly 调用 JavaScript console.log</p>
+            <button onclick="demoConsole()">输出到控制台</button>
+            <div class="console-output" id="consoleOutput">
+                <div class="console-line">控制台输出将显示在这里...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wasmInstance = null;
+        let wasmMemory = null;
+
+        // 控制台日志函数（用于演示）
+        function consoleLogString(offset, length) {
+            const bytes = new Uint8Array(wasmMemory.buffer, offset, length);
+            const string = new TextDecoder().decode(bytes);
+            const consoleOutput = document.getElementById('consoleOutput');
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            line.textContent = string;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            console.log(string); // 同时输出到浏览器控制台
+        }
+
+        // 初始化 WebAssembly
+        async function initWasm() {
+            if (wasmInstance) return wasmInstance;
+            
+            try {
+                // 创建内存
+                wasmMemory = new WebAssembly.Memory({ initial: 1 });
+                
+                // 创建导入对象，包含 JavaScript Math 函数
+                const importObject = {
+                    js: {
+                        Math_sin: (x) => Math.sin(x),
+                        Math_cos: (x) => Math.cos(x),
+                        Math_tan: (x) => Math.tan(x),
+                        Math_log: (x) => Math.log(x),
+                        Math_log10: (x) => Math.log10(x),
+                        Math_pow: (base, exp) => Math.pow(base, exp),
+                        Math_abs: (x) => Math.abs(x)
+                    },
+                    js: {
+                        mem: wasmMemory
+                    },
+                    console: {
+                        log: consoleLogString
+                    }
+                };
+                
+                // 修复：合并 js 对象
+                const fixedImportObject = {
+                    js: {
+                        Math_sin: (x) => Math.sin(x),
+                        Math_cos: (x) => Math.cos(x),
+                        Math_tan: (x) => Math.tan(x),
+                        Math_log: (x) => Math.log(x),
+                        Math_log10: (x) => Math.log10(x),
+                        Math_pow: (base, exp) => Math.pow(base, exp),
+                        Math_abs: (x) => Math.abs(x),
+                        mem: wasmMemory
+                    },
+                    console: {
+                        log: consoleLogString
+                    }
+                };
+                
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('builtins.wasm'),
+                    fixedImportObject
+                );
+                
+                wasmInstance = wasmModule.instance;
+                console.log('JavaScript Builtins 模块加载成功！');
+                console.log('导出的函数:', Object.keys(wasmInstance.exports));
+                return wasmInstance;
+            } catch (error) {
+                console.error('加载失败:', error);
+                alert(`加载 WebAssembly 失败: ${error.message}\n\n请确保：\n1. 已编译 builtins.wat（运行: wat2wasm builtins.wat -o builtins.wasm）\n2. 通过 HTTP 服务器运行此页面`);
+                return null;
+            }
+        }
+
+        window.demoSin = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('sinX').value);
+            const result = wasmInstance.exports.sin(x);
+            document.getElementById('trigResult').style.display = 'block';
+            document.getElementById('trigResult').textContent = `sin(${x}) = ${result}`;
+        };
+
+        window.demoCos = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('sinX').value);
+            const result = wasmInstance.exports.cos(x);
+            document.getElementById('trigResult').style.display = 'block';
+            document.getElementById('trigResult').textContent = `cos(${x}) = ${result}`;
+        };
+
+        window.demoTan = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('sinX').value);
+            const result = wasmInstance.exports.tan(x);
+            document.getElementById('trigResult').style.display = 'block';
+            document.getElementById('trigResult').textContent = `tan(${x}) = ${result}`;
+        };
+
+        window.demoLn = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('lnX').value);
+            const result = wasmInstance.exports.ln(x);
+            document.getElementById('logResult').style.display = 'block';
+            document.getElementById('logResult').textContent = `ln(${x}) = ${result}`;
+        };
+
+        window.demoLog10 = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('log10X').value);
+            const result = wasmInstance.exports.log10(x);
+            document.getElementById('logResult').style.display = 'block';
+            document.getElementById('logResult').textContent = `log10(${x}) = ${result}`;
+        };
+
+        window.demoPower = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const base = parseFloat(document.getElementById('base').value);
+            const exp = parseFloat(document.getElementById('exp').value);
+            const result = wasmInstance.exports.power(base, exp);
+            document.getElementById('powerResult').style.display = 'block';
+            document.getElementById('powerResult').textContent = `${base}^${exp} = ${result}`;
+        };
+
+        window.demoExp = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('base').value);
+            const result = wasmInstance.exports.exp(x);
+            document.getElementById('powerResult').style.display = 'block';
+            document.getElementById('powerResult').textContent = `e^${x} = ${result}`;
+        };
+
+        window.demoIdentity = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('identityX').value);
+            const result = wasmInstance.exports.sinCosIdentity(x);
+            document.getElementById('identityResult').style.display = 'block';
+            document.getElementById('identityResult').textContent = 
+                `sin²(${x}) + cos²(${x}) = ${result}\n` +
+                `理论值: 1.0\n` +
+                `误差: ${Math.abs(result - 1.0).toExponential(2)}`;
+        };
+
+        window.demoAbs = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const x = parseFloat(document.getElementById('absX').value);
+            const result = wasmInstance.exports.abs(x);
+            document.getElementById('absResult').style.display = 'block';
+            document.getElementById('absResult').textContent = `|${x}| = ${result}`;
+        };
+
+        window.demoConsole = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            wasmInstance.exports.sayHello();
+        };
+    </script>
+</body>
+</html>
+

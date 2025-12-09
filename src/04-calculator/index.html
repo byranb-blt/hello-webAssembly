@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>科学计算器 - WebAssembly 示例</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #222;
+        }
+        .calculator {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #1a1a1a;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .display {
+            background: #1e1e1e;
+            color: #4ade80;
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 36px;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+            margin-bottom: 20px;
+            min-height: 60px;
+            word-wrap: break-word;
+            font-weight: 500;
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        button {
+            padding: 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .number {
+            background: #f0f0f0;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+        .number:hover {
+            background: #e0e0e0;
+        }
+        .operator {
+            background: #ff9500;
+            color: white;
+            font-weight: 600;
+        }
+        .operator:hover {
+            background: #ff8500;
+        }
+        .function {
+            background: #007acc;
+            color: white;
+            font-weight: 500;
+        }
+        .function:hover {
+            background: #005a9e;
+        }
+        .equals {
+            background: #28a745;
+            color: white;
+            grid-column: span 2;
+            font-weight: 600;
+        }
+        .equals:hover {
+            background: #218838;
+        }
+        .clear {
+            background: #dc3545;
+            color: white;
+            font-weight: 600;
+        }
+        .clear:hover {
+            background: #c82333;
+        }
+        .history {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .history strong {
+            color: #1a1a1a;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .history-item {
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #444;
+            border-bottom: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1>🧮 科学计算器</h1>
+        <div class="display" id="display">0</div>
+        
+        <div class="buttons">
+            <button class="clear" onclick="clearAll()">C</button>
+            <button class="function" onclick="calculateFunction('sqrt')">√</button>
+            <button class="function" onclick="calculateFunction('sin')">sin</button>
+            <button class="function" onclick="calculateFunction('cos')">cos</button>
+            
+            <button class="function" onclick="calculateFunction('tan')">tan</button>
+            <button class="function" onclick="calculateFunction('ln')">ln</button>
+            <button class="function" onclick="calculateFunction('log10')">log</button>
+            <button class="operator" onclick="setOperator('/')">/</button>
+            
+            <button class="number" onclick="appendNumber('7')">7</button>
+            <button class="number" onclick="appendNumber('8')">8</button>
+            <button class="number" onclick="appendNumber('9')">9</button>
+            <button class="operator" onclick="setOperator('*')">×</button>
+            
+            <button class="number" onclick="appendNumber('4')">4</button>
+            <button class="number" onclick="appendNumber('5')">5</button>
+            <button class="number" onclick="appendNumber('6')">6</button>
+            <button class="operator" onclick="setOperator('-')">-</button>
+            
+            <button class="number" onclick="appendNumber('1')">1</button>
+            <button class="number" onclick="appendNumber('2')">2</button>
+            <button class="number" onclick="appendNumber('3')">3</button>
+            <button class="operator" onclick="setOperator('+')">+</button>
+            
+            <button class="function" onclick="appendNumber('.')">.</button>
+            <button class="number" onclick="appendNumber('0')">0</button>
+            <button class="function" onclick="calculateFunction('abs')">|x|</button>
+            <button class="equals" onclick="calculate()">=</button>
+        </div>
+        
+        <div class="history" id="history">
+            <strong>计算历史：</strong>
+        </div>
+    </div>
+
+    <script>
+        let wasmInstance = null;
+        let currentValue = '0';
+        let previousValue = null;
+        let operator = null;
+        let waitingForNewValue = false;
+
+        // 初始化 WebAssembly
+        async function initWasm() {
+            if (wasmInstance) return wasmInstance;
+            
+            try {
+                // 创建导入对象，包含 JavaScript Math 函数
+                const importObject = {
+                    js: {
+                        Math_sin: (x) => Math.sin(x),
+                        Math_cos: (x) => Math.cos(x),
+                        Math_tan: (x) => Math.tan(x),
+                        Math_log: (x) => Math.log(x),
+                        Math_log10: (x) => Math.log10(x)
+                    }
+                };
+                
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('calculator.wasm'),
+                    importObject
+                );
+                wasmInstance = wasmModule.instance;
+                console.log('计算器模块加载成功！');
+                return wasmInstance;
+            } catch (error) {
+                console.error('加载 WebAssembly 失败:', error);
+                alert('加载 WebAssembly 失败，请确保通过 HTTP 服务器运行此页面');
+                return null;
+            }
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            const display = document.getElementById('display');
+            display.textContent = currentValue;
+        }
+
+        // 添加数字
+        function appendNumber(num) {
+            if (waitingForNewValue) {
+                currentValue = num;
+                waitingForNewValue = false;
+            } else {
+                currentValue = currentValue === '0' ? num : currentValue + num;
+            }
+            updateDisplay();
+        }
+
+        // 设置运算符
+        function setOperator(op) {
+            if (previousValue !== null && operator !== null) {
+                calculate();
+            }
+            previousValue = parseFloat(currentValue);
+            operator = op;
+            waitingForNewValue = true;
+        }
+
+        // 执行计算
+        async function calculate() {
+            if (!wasmInstance) {
+                await initWasm();
+                if (!wasmInstance) return;
+            }
+            
+            if (previousValue === null || operator === null) return;
+            
+            const current = parseFloat(currentValue);
+            let result;
+            
+            const opMap = {
+                '+': 0,
+                '-': 1,
+                '*': 2,
+                '/': 3
+            };
+            
+            if (operator in opMap) {
+                result = wasmInstance.exports.calculate(
+                    previousValue,
+                    current,
+                    opMap[operator]
+                );
+            } else {
+                result = current;
+            }
+            
+            // 添加到历史
+            addToHistory(`${previousValue} ${operator} ${current} = ${result}`);
+            
+            currentValue = result.toString();
+            previousValue = null;
+            operator = null;
+            waitingForNewValue = true;
+            updateDisplay();
+        }
+
+        // 计算函数（单参数）
+        async function calculateFunction(funcName) {
+            if (!wasmInstance) {
+                await initWasm();
+                if (!wasmInstance) return;
+            }
+            
+            const value = parseFloat(currentValue);
+            let result;
+            
+            switch(funcName) {
+                case 'sqrt':
+                    result = wasmInstance.exports.sqrt(value);
+                    break;
+                case 'sin':
+                    result = wasmInstance.exports.sin(value);
+                    break;
+                case 'cos':
+                    result = wasmInstance.exports.cos(value);
+                    break;
+                case 'tan':
+                    result = wasmInstance.exports.tan(value);
+                    break;
+                case 'ln':
+                    result = wasmInstance.exports.ln(value);
+                    break;
+                case 'log10':
+                    result = wasmInstance.exports.log10(value);
+                    break;
+                case 'abs':
+                    result = wasmInstance.exports.abs(value);
+                    break;
+                default:
+                    return;
+            }
+            
+            addToHistory(`${funcName}(${value}) = ${result}`);
+            currentValue = result.toString();
+            waitingForNewValue = true;
+            updateDisplay();
+        }
+
+        // 清空
+        function clearAll() {
+            currentValue = '0';
+            previousValue = null;
+            operator = null;
+            waitingForNewValue = false;
+            updateDisplay();
+        }
+
+        // 添加到历史
+        function addToHistory(entry) {
+            const history = document.getElementById('history');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            item.textContent = entry;
+            history.appendChild(item);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            initWasm();
+            updateDisplay();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,11 @@
+# AssemblyScript 编译输出
+/build/
+/node_modules/
+package-lock.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+

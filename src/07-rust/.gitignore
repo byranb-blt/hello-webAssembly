@@ -1,0 +1,11 @@
+# Rust 编译输出
+/target/
+/pkg/
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+

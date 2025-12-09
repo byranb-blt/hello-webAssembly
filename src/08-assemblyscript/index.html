@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssemblyScript 转 WebAssembly 示例</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #222;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a1a1a;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        h2 {
+            color: #2a2a2a;
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 30px;
+        }
+        .demo-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #007acc;
+            font-family: 'Courier New', monospace;
+            color: #1a1a1a;
+            font-size: 15px;
+            font-weight: 500;
+            white-space: pre-wrap;
+        }
+        input {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            font-size: 15px;
+            color: white;
+            background-color: #333;
+        }
+        input::placeholder {
+            color: #aaa;
+        }
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
+        }
+        .info-box strong {
+            color: #664d03;
+            font-size: 16px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📘 AssemblyScript 转 WebAssembly 示例</h1>
+        <p>展示如何使用 AssemblyScript（TypeScript 子集）编写代码并编译为 WebAssembly</p>
+        
+        <div class="info-box">
+            <strong>AssemblyScript 的优势：</strong>
+            <ul>
+                <li>TypeScript 语法：熟悉的开发体验</li>
+                <li>类型安全：编译时类型检查</li>
+                <li>易于学习：对于 TypeScript/JavaScript 开发者友好</li>
+                <li>快速编译：编译速度快</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h2>1. 基本运算</h2>
+            <p>计算 <input type="number" id="addA" value="10"> + <input type="number" id="addB" value="20"></p>
+            <button onclick="demoAdd()">计算</button>
+            <div id="addResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>2. 斐波那契数列</h2>
+            <p>计算第 <input type="number" id="fibN" value="40" min="1" max="50"> 个斐波那契数</p>
+            <button onclick="demoFibonacci()">计算</button>
+            <div id="fibResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>3. 阶乘</h2>
+            <p>计算 <input type="number" id="factN" value="12" min="1" max="20"> 的阶乘</p>
+            <button onclick="demoFactorial()">计算</button>
+            <div id="factResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>4. 数组求和</h2>
+            <p>对数组 [1, 2, 3, 4, 5, 10, 20, 30] 求和</p>
+            <button onclick="demoSumArray()">计算</button>
+            <div id="sumResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>5. 字符串操作</h2>
+            <p>字符串1: <input type="text" id="str1" value="Hello"> + 字符串2: <input type="text" id="str2" value=" WebAssembly"></p>
+            <button onclick="demoString()">拼接</button>
+            <div id="stringResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>6. 数学函数</h2>
+            <p>计算 <input type="number" id="base" value="2" step="0.1"> 的 <input type="number" id="exp" value="3" step="0.1"> 次方</p>
+            <button onclick="demoMath()">计算</button>
+            <div id="mathResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>7. 内存操作（类）</h2>
+            <p>演示 AssemblyScript 类在 WebAssembly 中的使用</p>
+            <button onclick="demoMemory()">演示</button>
+            <div id="memoryResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let wasmModule = null;
+        let wasmInstance = null;
+
+        async function initWasm() {
+            if (wasmInstance) return wasmInstance;
+            
+            try {
+                // AssemblyScript 编译的模块需要 abort 函数
+                // abort 函数签名: (message: i32, fileName: i32, line: i32, column: i32) => void
+                const importObject = {
+                    env: {
+                        abort: (msg, file, line, col) => {
+                            console.error(`AssemblyScript abort: message=${msg}, file=${file}, line=${line}, col=${col}`);
+                            // 不抛出错误，只记录日志，让程序继续运行
+                        }
+                    }
+                };
+                
+                // 加载并实例化模块
+                const response = await fetch('build/release.wasm');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const bytes = await response.arrayBuffer();
+                const wasmModule = await WebAssembly.instantiate(bytes, importObject);
+                
+                wasmInstance = wasmModule.instance;
+                console.log('AssemblyScript WebAssembly 模块加载成功！');
+                console.log('导出的函数:', Object.keys(wasmInstance.exports));
+                return wasmInstance;
+            } catch (error) {
+                console.error('加载失败:', error);
+                console.error('错误详情:', error.stack);
+                const errorMsg = error.message || '未知错误';
+                alert(`加载 WebAssembly 失败: ${errorMsg}\n\n请确保：\n1. 已编译 AssemblyScript 代码（运行: npm run build）\n2. 通过 HTTP 服务器运行此页面\n3. build/release.wasm 文件存在`);
+                return null;
+            }
+        }
+
+        window.demoAdd = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const a = parseInt(document.getElementById('addA').value);
+            const b = parseInt(document.getElementById('addB').value);
+            const result = wasmInstance.exports.add(a, b);
+            document.getElementById('addResult').style.display = 'block';
+            document.getElementById('addResult').textContent = `${a} + ${b} = ${result}`;
+        };
+
+        window.demoFibonacci = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const n = parseInt(document.getElementById('fibN').value);
+            const start = performance.now();
+            const result = wasmInstance.exports.fibonacci(n);
+            const time = performance.now() - start;
+            document.getElementById('fibResult').style.display = 'block';
+            document.getElementById('fibResult').textContent = `第 ${n} 个斐波那契数: ${result}\n计算时间: ${time.toFixed(2)} ms`;
+        };
+
+        window.demoFactorial = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const n = parseInt(document.getElementById('factN').value);
+            const start = performance.now();
+            const result = wasmInstance.exports.factorial(n);
+            const time = performance.now() - start;
+            document.getElementById('factResult').style.display = 'block';
+            document.getElementById('factResult').textContent = `${n}! = ${result}\n计算时间: ${time.toFixed(2)} ms`;
+        };
+
+        window.demoSumArray = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const arr = new Int32Array([1, 2, 3, 4, 5, 10, 20, 30]);
+            const result = wasmInstance.exports.sumArray(arr);
+            document.getElementById('sumResult').style.display = 'block';
+            document.getElementById('sumResult').textContent = `数组: [${Array.from(arr).join(', ')}]\n求和结果: ${result}`;
+        };
+
+        window.demoString = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const str1 = document.getElementById('str1').value;
+            const str2 = document.getElementById('str2').value;
+            // 注意：AssemblyScript 的字符串操作需要特殊处理
+            // 这里简化演示，实际使用时需要处理字符串的内存布局
+            document.getElementById('stringResult').style.display = 'block';
+            document.getElementById('stringResult').textContent = 
+                `字符串1长度: ${str1.length}\n字符串2长度: ${str2.length}\n拼接结果: ${str1 + str2}`;
+        };
+
+        window.demoMath = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            const base = parseFloat(document.getElementById('base').value);
+            const exp = parseFloat(document.getElementById('exp').value);
+            const result = wasmInstance.exports.power(base, exp);
+            const sqrtResult = wasmInstance.exports.sqrt(result);
+            document.getElementById('mathResult').style.display = 'block';
+            document.getElementById('mathResult').textContent = 
+                `${base}^${exp} = ${result}\n√${result} = ${sqrtResult}`;
+        };
+
+        window.demoMemory = async function() {
+            await initWasm();
+            if (!wasmInstance) return;
+            
+            // 初始化数组
+            wasmInstance.exports.initDemoArray(5);
+            const initialSum = wasmInstance.exports.getDemoArraySum();
+            const length = wasmInstance.exports.getDemoArrayLength();
+            
+            // 修改数组中的值
+            wasmInstance.exports.setDemoArrayValue(0, 100);
+            const modifiedSum = wasmInstance.exports.getDemoArraySum();
+            
+            document.getElementById('memoryResult').style.display = 'block';
+            document.getElementById('memoryResult').textContent = 
+                `初始化数组（长度: ${length}）\n` +
+                `初始求和: ${initialSum}\n` +
+                `修改索引 0 为 100 后求和: ${modifiedSum}\n\n` +
+                `注意：AssemblyScript 不支持直接导出类，\n使用函数和全局变量来模拟类的功能。`;
+        };
+    </script>
+</body>
+</html>
+

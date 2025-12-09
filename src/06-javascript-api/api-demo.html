@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript API 示例 - WebAssembly</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #222;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a1a1a;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        h2 {
+            color: #2a2a2a;
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 0;
+        }
+        p {
+            color: #333;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .demo-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .demo-section p {
+            color: #444;
+            font-size: 15px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-left: 4px solid #007acc;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #1a1a1a;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .api-list {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
+        }
+        .api-list strong {
+            color: #664d03;
+            font-size: 16px;
+        }
+        .api-list ul {
+            color: #856404;
+            font-size: 15px;
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .api-list li {
+            margin: 5px 0;
+        }
+        .api-list code {
+            color: #856404;
+            background: #fff8e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 WebAssembly JavaScript API 示例</h1>
+        <p>演示 WebAssembly JavaScript API 的各种用法</p>
+        
+        <div class="api-list">
+            <strong>主要 API：</strong>
+            <ul>
+                <li><code>WebAssembly.instantiateStreaming()</code> - 流式加载和实例化</li>
+                <li><code>WebAssembly.instantiate()</code> - 加载和实例化</li>
+                <li><code>WebAssembly.compile()</code> - 编译模块</li>
+                <li><code>WebAssembly.validate()</code> - 验证二进制代码</li>
+                <li><code>WebAssembly.Memory()</code> - 创建内存</li>
+                <li><code>WebAssembly.Table()</code> - 创建表</li>
+                <li><code>WebAssembly.Global()</code> - 创建全局变量</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h2>1. 流式加载 (instantiateStreaming)</h2>
+            <p>推荐方式：直接从 Response 流加载和实例化</p>
+            <button onclick="demoStreaming()">演示流式加载</button>
+            <div id="result1" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>2. 非流式加载 (instantiate)</h2>
+            <p>先获取 ArrayBuffer，再实例化</p>
+            <button onclick="demoNonStreaming()">演示非流式加载</button>
+            <div id="result2" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>3. 编译和实例化分离</h2>
+            <p>先编译模块，再多次实例化（适合模块复用）</p>
+            <button onclick="demoCompileSeparate()">演示分离编译</button>
+            <div id="result3" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>4. 验证二进制代码</h2>
+            <p>检查 WebAssembly 二进制代码是否有效</p>
+            <button onclick="demoValidate()">演示验证</button>
+            <div id="result4" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>5. Memory 操作</h2>
+            <p>创建、访问和增长内存</p>
+            <button onclick="demoMemory()">演示内存操作</button>
+            <div id="result5" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>6. Table 操作</h2>
+            <p>创建、访问和修改表（注意：Table 只能存储 WebAssembly 函数对象，不能存储普通 JavaScript 函数）</p>
+            <button onclick="demoTable()">演示表操作</button>
+            <div id="result6" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>7. Global 操作</h2>
+            <p>创建和操作全局变量</p>
+            <button onclick="demoGlobal()">演示全局变量</button>
+            <div id="result7" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>8. 错误处理</h2>
+            <p>处理编译、链接和运行时错误</p>
+            <button onclick="demoErrorHandling()">演示错误处理</button>
+            <div id="result8" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 流式加载
+        async function demoStreaming() {
+            const resultDiv = document.getElementById('result1');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '加载中...';
+            
+            try {
+                // 使用简单的 add.wasm（需要先编译）
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('../01-hello-world/add.wasm')
+                );
+                
+                const result = wasmModule.instance.exports.add(10, 20);
+                resultDiv.textContent = `✅ 流式加载成功！\n调用 add(10, 20) = ${result}`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}\n\n提示：确保 add.wasm 文件存在`;
+            }
+        }
+
+        // 2. 非流式加载
+        async function demoNonStreaming() {
+            const resultDiv = document.getElementById('result2');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '加载中...';
+            
+            try {
+                const response = await fetch('../01-hello-world/add.wasm');
+                const bytes = await response.arrayBuffer();
+                
+                const wasmModule = await WebAssembly.instantiate(bytes);
+                
+                const result = wasmModule.instance.exports.add(15, 25);
+                resultDiv.textContent = `✅ 非流式加载成功！\n调用 add(15, 25) = ${result}`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}`;
+            }
+        }
+
+        // 3. 编译和实例化分离
+        async function demoCompileSeparate() {
+            const resultDiv = document.getElementById('result3');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '编译中...';
+            
+            try {
+                // 编译模块
+                const response = await fetch('../01-hello-world/add.wasm');
+                const bytes = await response.arrayBuffer();
+                const module = await WebAssembly.compile(bytes);
+                
+                resultDiv.textContent = '✅ 模块编译成功！\n\n';
+                
+                // 多次实例化
+                const instance1 = new WebAssembly.Instance(module);
+                const instance2 = new WebAssembly.Instance(module);
+                
+                const result1 = instance1.exports.add(5, 3);
+                const result2 = instance2.exports.add(7, 8);
+                
+                resultDiv.textContent += `实例1: add(5, 3) = ${result1}\n`;
+                resultDiv.textContent += `实例2: add(7, 8) = ${result2}\n\n`;
+                resultDiv.textContent += '✅ 同一个模块可以创建多个实例！';
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}`;
+            }
+        }
+
+        // 4. 验证二进制代码
+        async function demoValidate() {
+            const resultDiv = document.getElementById('result4');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '验证中...';
+            
+            try {
+                // 获取有效的 wasm 文件
+                const response = await fetch('../01-hello-world/add.wasm');
+                const validBytes = await response.arrayBuffer();
+                
+                // 验证有效代码
+                const isValid = WebAssembly.validate(validBytes);
+                resultDiv.textContent = `✅ 有效代码验证: ${isValid}\n\n`;
+                
+                // 验证无效代码
+                const invalidBytes = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
+                const isInvalid = WebAssembly.validate(invalidBytes);
+                resultDiv.textContent += `❌ 无效代码验证: ${isInvalid}`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}`;
+            }
+        }
+
+        // 5. Memory 操作
+        async function demoMemory() {
+            const resultDiv = document.getElementById('result5');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '创建内存...';
+            
+            try {
+                // 创建内存
+                const memory = new WebAssembly.Memory({ 
+                    initial: 1,  // 1页 = 64KB
+                    maximum: 10  // 最大10页
+                });
+                
+                resultDiv.textContent = `✅ 内存创建成功！\n`;
+                resultDiv.textContent += `初始大小: ${memory.buffer.byteLength} 字节 (${memory.buffer.byteLength / 1024} KB)\n\n`;
+                
+                // 写入数据
+                const view = new Uint8Array(memory.buffer);
+                const text = "Hello, Memory!";
+                const encoder = new TextEncoder();
+                const encoded = encoder.encode(text);
+                view.set(encoded, 0);
+                
+                resultDiv.textContent += `写入数据: "${text}"\n\n`;
+                
+                // 读取数据
+                const decoder = new TextDecoder();
+                const decoded = decoder.decode(view.slice(0, text.length));
+                resultDiv.textContent += `读取数据: "${decoded}"\n\n`;
+                
+                // 增长内存
+                memory.grow(1);
+                resultDiv.textContent += `✅ 内存增长后大小: ${memory.buffer.byteLength} 字节`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}`;
+            }
+        }
+
+        // 6. Table 操作
+        async function demoTable() {
+            const resultDiv = document.getElementById('result6');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '加载 WebAssembly 模块...';
+            
+            try {
+                // 首先加载一个包含函数的 WebAssembly 模块
+                // Table 只能存储 WebAssembly 函数，不能存储普通 JavaScript 函数
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('table-demo.wasm')
+                );
+                const wasmInstance = wasmModule.instance;
+                
+                resultDiv.textContent = `✅ WebAssembly 模块加载成功！\n\n`;
+                
+                // 创建表
+                const table = new WebAssembly.Table({ 
+                    initial: 3, 
+                    element: "anyfunc" 
+                });
+                
+                resultDiv.textContent += `✅ 表创建成功！\n`;
+                resultDiv.textContent += `初始大小: ${table.length}\n\n`;
+                
+                // 获取 WebAssembly 导出的函数（这些是真正的 Wasm 函数对象）
+                const func1 = wasmInstance.exports.func1;
+                const func2 = wasmInstance.exports.func2;
+                const func3 = wasmInstance.exports.func3;
+                
+                // 设置函数到表中（必须是 WebAssembly 函数对象）
+                table.set(0, func1);
+                table.set(1, func2);
+                table.set(2, func3);
+                
+                resultDiv.textContent += `设置 WebAssembly 函数到表中...\n\n`;
+                
+                // 获取并调用函数
+                const result1 = table.get(0)();
+                const result2 = table.get(1)();
+                const result3 = table.get(2)();
+                
+                resultDiv.textContent += `table.get(0)() = ${result1}\n`;
+                resultDiv.textContent += `table.get(1)() = ${result2}\n`;
+                resultDiv.textContent += `table.get(2)() = ${result3}\n\n`;
+                
+                // 增长表
+                table.grow(1);
+                resultDiv.textContent += `✅ 表增长后大小: ${table.length}\n\n`;
+                resultDiv.textContent += `注意：Table 只能存储 WebAssembly 函数对象，\n不能存储普通的 JavaScript 函数。`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}\n\n提示：请确保 table-demo.wasm 文件存在`;
+            }
+        }
+
+        // 7. Global 操作
+        async function demoGlobal() {
+            const resultDiv = document.getElementById('result7');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '创建全局变量...';
+            
+            try {
+                // 创建可变全局变量
+                const global = new WebAssembly.Global({ 
+                    value: "i32", 
+                    mutable: true 
+                }, 0);
+                
+                resultDiv.textContent = `✅ 全局变量创建成功！\n`;
+                resultDiv.textContent += `初始值: ${global.value}\n\n`;
+                
+                // 修改值
+                global.value = 42;
+                resultDiv.textContent += `设置值: ${global.value}\n`;
+                
+                global.value = 100;
+                resultDiv.textContent += `再次设置: ${global.value}\n\n`;
+                
+                // 创建不可变全局变量
+                const constGlobal = new WebAssembly.Global({ 
+                    value: "i32", 
+                    mutable: false 
+                }, 999);
+                
+                resultDiv.textContent += `✅ 不可变全局变量创建成功！\n`;
+                resultDiv.textContent += `值: ${constGlobal.value}\n`;
+                resultDiv.textContent += `(尝试修改会失败)`;
+            } catch (error) {
+                resultDiv.textContent = `❌ 错误: ${error.message}`;
+            }
+        }
+
+        // 8. 错误处理
+        async function demoErrorHandling() {
+            const resultDiv = document.getElementById('result8');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '演示错误处理...';
+            
+            let output = '';
+            
+            // 1. CompileError
+            try {
+                const invalidWasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xFF]);
+                await WebAssembly.compile(invalidWasm);
+            } catch (error) {
+                if (error instanceof WebAssembly.CompileError) {
+                    output += `✅ CompileError 捕获成功\n`;
+                    output += `消息: ${error.message}\n\n`;
+                }
+            }
+            
+            // 2. LinkError (导入缺失)
+            try {
+                const wasmBytes = await fetch('../01-hello-world/add.wasm').then(r => r.arrayBuffer());
+                const module = await WebAssembly.compile(wasmBytes);
+                // 故意提供错误的导入
+                await new WebAssembly.Instance(module, { wrong: { import: () => {} } });
+            } catch (error) {
+                if (error instanceof WebAssembly.LinkError) {
+                    output += `✅ LinkError 捕获成功\n`;
+                    output += `消息: ${error.message}\n\n`;
+                }
+            }
+            
+            // 3. RuntimeError
+            try {
+                // 创建一个会导致运行时错误的模块
+                const wasmModule = await WebAssembly.instantiateStreaming(
+                    fetch('../01-hello-world/add.wasm')
+                );
+                // 正常调用不会出错
+                wasmModule.instance.exports.add(1, 2);
+                output += `✅ 正常执行成功\n`;
+                output += `(RuntimeError 通常发生在 WebAssembly 代码内部)\n\n`;
+            } catch (error) {
+                if (error instanceof WebAssembly.RuntimeError) {
+                    output += `✅ RuntimeError 捕获成功\n`;
+                    output += `消息: ${error.message}\n`;
+                }
+            }
+            
+            output += `\n错误类型总结:\n`;
+            output += `- CompileError: 编译时错误\n`;
+            output += `- LinkError: 链接时错误（导入/导出不匹配）\n`;
+            output += `- RuntimeError: 运行时错误`;
+            
+            resultDiv.textContent = output;
+        }
+    </script>
+</body>
+</html>
+
